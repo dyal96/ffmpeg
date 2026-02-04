@@ -10,6 +10,7 @@ import threading
 import shutil
 import os
 import sys
+import re
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent))
@@ -100,6 +101,18 @@ class YouTubeTool(FFmpegToolApp):
         ttk.Button(actions, text="📋 Get Info", command=self.get_info).pack(side="left", padx=5)
         ttk.Button(actions, text="Quit", command=self.root.quit).pack(side="left", padx=5)
         
+        # Progress Section
+        progress_card = create_card(self.root, "📊 Progress")
+        progress_card.pack(fill="x", padx=10, pady=5)
+        
+        self.progress_var = tk.DoubleVar(value=0)
+        self.progress_bar = ttk.Progressbar(progress_card, variable=self.progress_var, 
+                                             maximum=100, mode='determinate')
+        self.progress_bar.pack(fill="x", pady=(5, 2))
+        
+        self.status_label = ttk.Label(progress_card, text="Ready", anchor="center")
+        self.status_label.pack(fill="x", pady=(2, 5))
+        
         # Bottom section
         self.create_bottom_section(self.root)
     
@@ -143,7 +156,7 @@ class YouTubeTool(FFmpegToolApp):
         quality = self.quality_var.get()
         fmt = self.format_var.get()
         
-        cmd = [get_ytdlp()]
+        cmd = [get_ytdlp(), "--newline"]  # --newline for line-by-line progress output
         
         # Format selection
         if quality == "audio only":
@@ -172,7 +185,18 @@ class YouTubeTool(FFmpegToolApp):
         self.set_preview(cmd)
         self._on_log(f"$ {' '.join(cmd)}\n\n")
         
+        # Reset progress
+        self.progress_var.set(0)
+        self.status_label.config(text="Starting download...")
         self.run_btn.config(state="disabled")
+        
+        # Regex pattern to match yt-dlp download progress
+        # Example: [download]  45.2% of  150.23MiB at  5.23MiB/s ETA 00:15
+        progress_pattern = re.compile(
+            r'\[download\]\s+(\d+\.?\d*)%\s+of\s+~?\s*([\d.]+\w+)'
+            r'(?:\s+at\s+([\d.]+\w+/s))?'
+            r'(?:\s+ETA\s+([\d:]+))?'
+        )
         
         def download():
             try:
@@ -181,18 +205,55 @@ class YouTubeTool(FFmpegToolApp):
                                            text=True, creationflags=creationflags)
                 for line in process.stdout:
                     self.root.after(0, lambda l=line: self._on_log(l))
+                    
+                    # Parse progress from output
+                    match = progress_pattern.search(line)
+                    if match:
+                        percent = float(match.group(1))
+                        size = match.group(2) or ""
+                        speed = match.group(3) or ""
+                        eta = match.group(4) or ""
+                        
+                        status_text = f"{percent:.1f}%"
+                        if size:
+                            status_text += f" of {size}"
+                        if speed:
+                            status_text += f" • {speed}"
+                        if eta:
+                            status_text += f" • ETA: {eta}"
+                        
+                        self.root.after(0, lambda p=percent, s=status_text: self._update_progress(p, s))
+                    
+                    # Check for other status messages
+                    if "[download] Destination:" in line:
+                        self.root.after(0, lambda: self.status_label.config(text="Downloading..."))
+                    elif "[Merger]" in line or "Merging" in line.lower():
+                        self.root.after(0, lambda: self._update_progress(100, "Merging audio and video..."))
+                    elif "[ExtractAudio]" in line:
+                        self.root.after(0, lambda: self._update_progress(100, "Extracting audio..."))
+                    elif "[EmbedThumbnail]" in line:
+                        self.root.after(0, lambda: self.status_label.config(text="Embedding thumbnail..."))
+                
                 process.wait()
                 
                 self.root.after(0, lambda: self.run_btn.config(state="normal"))
                 if process.returncode == 0:
+                    self.root.after(0, lambda: self._update_progress(100, "Download complete! ✓"))
                     self.root.after(0, lambda: tk.messagebox.showinfo("Complete", "Download finished!"))
                 else:
+                    self.root.after(0, lambda: self._update_progress(0, "Download failed"))
                     self.root.after(0, lambda: tk.messagebox.showerror("Error", "Download failed."))
             except Exception as e:
                 self.root.after(0, lambda: self._on_log(f"Error: {e}\n"))
+                self.root.after(0, lambda: self._update_progress(0, f"Error: {e}"))
                 self.root.after(0, lambda: self.run_btn.config(state="normal"))
         
         threading.Thread(target=download, daemon=True).start()
+    
+    def _update_progress(self, percent, status_text):
+        """Update progress bar and status label."""
+        self.progress_var.set(percent)
+        self.status_label.config(text=status_text)
 
 if __name__ == "__main__":
     app = YouTubeTool()

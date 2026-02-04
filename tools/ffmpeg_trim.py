@@ -9,7 +9,8 @@ from pathlib import Path
 
 from ffmpeg_common import (
     FFmpegToolApp, get_binary, get_media_duration, format_duration,
-    generate_output_path, browse_file, browse_save_file, create_card, get_theme
+    generate_output_path, browse_file, browse_save_file, create_card, get_theme,
+    parse_time_to_seconds
 )
 
 class TrimApp(FFmpegToolApp):
@@ -127,23 +128,31 @@ class TrimApp(FFmpegToolApp):
     def build_command(self) -> list:
         input_path = self.input_entry.get()
         output_path = self.output_entry.get()
-        start_time = self.start_entry.get().strip()
-        end_time = self.end_entry.get().strip()
+        start_str = self.start_entry.get().strip()
+        end_str = self.end_entry.get().strip()
         
         if not input_path or not output_path:
             return None
+            
+        # Calculate duration
+        start_sec = parse_time_to_seconds(start_str) if start_str else 0
+        end_sec = parse_time_to_seconds(end_str) if end_str else 0
+        
+        duration = 0
+        if end_sec > start_sec:
+            duration = end_sec - start_sec
         
         cmd = [get_binary("ffmpeg"), "-y"]
         
         # Add start time (before input for faster seeking)
-        if start_time and start_time != "00:00:00":
-            cmd.extend(["-ss", start_time])
+        if start_sec > 0:
+            cmd.extend(["-ss", str(start_sec)])
         
         cmd.extend(["-i", input_path])
         
-        # Add end time (as duration from start, or absolute)
-        if end_time:
-            cmd.extend(["-to", end_time])
+        # Add duration
+        if duration > 0:
+            cmd.extend(["-t", str(duration)])
         
         # Copy mode or re-encode
         if self.copy_mode.get():

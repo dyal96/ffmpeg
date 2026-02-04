@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FFmpeg Web Tools</title>
+    <meta name="description" content="Professional FFmpeg tools accessible via web browser">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/main.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <span>🎬</span>
+                <span>FFmpeg Web</span>
+            </div>
+            <nav class="nav-section" id="navSection">
+                <!-- Populated by JS -->
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+            <header class="header">
+                <h1>Dashboard</h1>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Search tools...">
+                </div>
+            </header>
+
+            <div class="content">
+                <!-- Tool Categories Info -->
+                <div style="margin-bottom: 24px; display: flex; gap: 16px; flex-wrap: wrap;">
+                    <span
+                        style="display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--text-secondary);">
+                        <span style="width:8px;height:8px;background:#22c55e;border-radius:50%;"></span> Quick
+                    </span>
+                    <span
+                        style="display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--text-secondary);">
+                        <span style="width:8px;height:8px;background:#6366f1;border-radius:50%;"></span> Advanced
+                    </span>
+                    <span
+                        style="display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--text-secondary);">
+                        <span style="width:8px;height:8px;background:#f59e0b;border-radius:50%;"></span> Utility
+                    </span>
+                    <span
+                        style="display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--text-secondary);">
+                        <span style="width:8px;height:8px;background:#ec4899;border-radius:50%;"></span> System
+                    </span>
+                </div>
+
+                <!-- Tool Grid -->
+                <div class="tool-grid" id="toolGrid">
+                    <!-- Populated by JS -->
+                    <div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--text-muted);">
+                        <div class="spinner" style="margin:0 auto 16px;"></div>
+                        Loading tools...
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Tool Modal -->
+    <div class="modal-overlay" id="toolModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalHeader">Tool Name</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Form inputs populated by JS -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="runTool()">
+                    <span>▶</span> Run
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Browser Modal -->
+    <div class="modal-overlay" id="browseModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2><span>📁</span> File Browser</h2>
+                <button class="modal-close" onclick="closeBrowseModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-glass); border-radius: 8px;">
+                    <span id="browsePath">/</span>
+                </div>
+                <div id="browseContent" style="max-height: 400px; overflow-y: auto;">
+                    <!-- Files listed here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="selectCurrentFolder()">Select Folder</button>
+                <button class="btn btn-secondary" onclick="closeBrowseModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmFileSelection()">Select</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Panel -->
+    <div class="progress-panel" id="progressPanel">
+        <div class="progress-header">
+            <span id="progressText">0% - Starting...</span>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <button class="btn btn-secondary" onclick="stopJob()" style="padding: 8px 16px;">Stop</button>
+            <button class="btn btn-secondary" onclick="hideProgress()" style="padding: 8px 12px;">✕</button>
+        </div>
+        <div class="console" id="consoleOutput">
+            <div class="console-line">Waiting for output...</div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="/static/js/app.js"></script>
+    {% if open_browser %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            openFileBrowser();
+            {% if browse_path %} loadDirectory('{{ browse_path }}'); {% endif %}
+        });
+    </script>
+    {% endif %}
+</body>
+
+</html>
